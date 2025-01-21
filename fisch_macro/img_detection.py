@@ -10,7 +10,7 @@ size = pag.size()
 height = size.height
 width = size.width
 startx = 438*width // 1470
-bar_half_x = 1184*width // (1470 * 16)
+bar_half_x = 1184*width // (1470 * 8)
 
 def output_bw(image):
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
@@ -31,12 +31,10 @@ def get_fishing_minigame_ss():
         sct_img = sct.grab(monitor)
         
         img = np.array(sct_img)
-        img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-        data = im.fromarray(img)
+        img = cv2.cvtColor(img, cv2.COLOR_BGRA2GRAY)
         #cv2.imshow("Image", img)
         #cv2.waitKey(0)  # Wait for a key press
         #cv2.destroyAllWindows()
-        print("returning screenshot")
         return output_bw(img)
         
     #screenshot = pag.screenshot()
@@ -48,13 +46,15 @@ def get_fishing_minigame_ss():
     
 def find_image_on_screen(template_path, threshold=0.7, where="all", screenshot_gray = None):
     # Take a screenshot and convert to OpenCV format
+    
     if screenshot_gray is None:
-        screenshot = pag.screenshot()
-        screenshot = np.array(screenshot)  # Convert to NumPy array
-        if where == "fishing_minigame":
-            screenshot = screenshot[(1630*height//956):(1675*height//956), (startx*2):(startx*2 +1184*width // 1470)]
-        screenshot = cv2.cvtColor(screenshot, cv2.COLOR_RGB2BGR)
-        screenshot_gray = cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY)
+        with mss.mss() as sct:
+            if where == "fishing_minigame":
+                monitor = {"top": (815*height//956), "left": (startx), "width": 592*width // 1470, "height": 45*height//(956*2)}
+            else: monitor = sct.monitors[0]
+            sct_img = sct.grab(monitor)
+            screenshot = np.array(sct_img)
+            screenshot_gray = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2GRAY)
         
     template = cv2.imread(template_path, cv2.IMREAD_UNCHANGED)
     template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY) if len(template.shape) == 3 else template
@@ -73,11 +73,10 @@ def find_image_on_screen(template_path, threshold=0.7, where="all", screenshot_g
     else:
         return False
 
-def start_scanning(fish_last_seen, held_down, clicking, bar_mid_x, fish_x):
+def start_scanning(fish_last_seen, held_down, bar_mid_x, fish_x):
     threshold = 0.6
     fish_last_seen.value = time.time()
     while time.time() - fish_last_seen.value< 1:
-        print(time.time() - fish_last_seen.value)
         screenshot = get_fishing_minigame_ss()
         val_at_ss = held_down.value
         
@@ -97,10 +96,3 @@ def start_scanning(fish_last_seen, held_down, clicking, bar_mid_x, fish_x):
             fish_last_seen.value = time.time()
             x, y = match_fish
             fish_x.value = x
-        
-        if fish_x.value > bar_mid_x.value:
-            clicking.value = 0
-        else:
-            clicking.value = 1
-    print(time.time() - fish_last_seen.value)
-    print("exiting")
